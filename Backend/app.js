@@ -3,6 +3,7 @@ dotenv.config();
 const cors = require("cors");
 const connectDB = require("./db/db.js");
 const userRoutes = require("./routes/user.routes.js");
+const captionRoutes = require("./routes/caption.routes.js");
 const cookieParser = require("cookie-parser");
 const express = require("express");
 const app = express();
@@ -17,6 +18,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+app.use('/captions', captionRoutes);
 app.use('/users', userRoutes);
 
 module.exports = app;

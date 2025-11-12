@@ -246,3 +246,115 @@ Notes & links
   blacklist
 - Blacklist model: `models/backlistToken.model.js` (used to store invalidated
   tokens)
+
+# /captions/register
+
+Description
+
+- Registers a new caption (driver) and returns a JWT token plus the created
+  caption object.
+- Endpoint implemented by `captionController.registerCaption` and wired in
+  `routes/caption.routes.js`. The controller uses `captionService.createCaption`
+  which ultimately persists data via `captionModel`.
+
+URL
+
+- POST /captions/register
+
+Request headers
+
+- Content-Type: application/json
+
+Request body (JSON)
+
+- Required shape:
+  ```json
+  {
+    "fullname": {
+      "firstname": "string (min 3 chars)",
+      "lastname": "string (optional, min 3 chars)"
+    },
+    "email": "string (valid email)",
+    "password": "string (min 6 chars)",
+    "vehical": {
+      "plate": "string (min 3 chars)",
+      "color": "string (required)",
+      "capacity": "number (min 1)",
+      "vehicalType": "string (one of ['car', 'bike', 'van', 'tuktuk', 'suv'])"
+    }
+  }
+  ```
+
+Validation rules (as implemented in `routes/caption.routes.js`)
+
+- email: must be a valid email (express-validator `.isEmail()`).
+- fullname.firstname: minimum 3 characters.
+- password: minimum 6 characters.
+- vehical.color: required.
+- vehical.plate: minimum 3 characters.
+- vehical.capacity: must be an integer greater than or equal to 1.
+- vehical.vehicalType: must be one of the specified types.
+
+Example request
+
+- POST /captions/register
+- Body:
+  ```json
+  {
+    "fullname": { "firstname": "Jane", "lastname": "Doe" },
+    "email": "jane.doe@example.com",
+    "password": "securepassword",
+    "vehical": {
+      "plate": "ABC123",
+      "color": "red",
+      "capacity": 4,
+      "vehicalType": "car"
+    }
+  }
+  ```
+
+Responses / Status codes
+
+- 201 Created
+
+  - Description: Caption created successfully.
+  - Body:
+    ```json
+    {
+      "token": "<jwt>",
+      "caption": { ...created caption object... }
+    }
+    ```
+
+- 400 Bad Request
+
+  - Description: Validation errors. Returned when express-validator detects
+    invalid input.
+  - Body:
+    ```json
+    {
+      "errors": [ ... ]
+    }
+    ```
+
+- 409 Conflict
+
+  - Description: Caption with the provided email already exists.
+  - Body:
+    ```json
+    {
+      "message": "Caption with this email already exists"
+    }
+    ```
+
+- 500 Internal Server Error
+  - Description: Unexpected server or database error (e.g., DB connection
+    failure).
+
+Notes & links
+
+- Route definition: `routes/caption.routes.js`
+- Controller: `controllers/caption.controller.js` — `registerCaption`
+- Service: `services/caption.service.js` — `createCaption`
+- Model: `models/caption.model.js` — includes `captionModel.hashPassword` and
+  token generation
