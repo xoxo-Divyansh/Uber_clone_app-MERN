@@ -1,4 +1,5 @@
 ## Backend API Documentation
+
 # /users/register
 
 Description
@@ -140,3 +141,108 @@ Notes & links
 - Controller: `controllers/user.controller.js` — `loginUser`
 - Model: `models/user.model.js` — `comparePassword`, `generateAuthToken`,
   `password` field is `select: false`
+
+# /users/profile
+
+Description
+
+- Returns the authenticated user's profile.
+- Protected route — requires a valid JWT (sent in Authorization header as
+  "Bearer <token>" or in a cookie named `token`).
+- Implemented by `userController.getUserProfile` and guarded by
+  `auth.middleware.authUser`.
+
+URL
+
+- GET /users/profile
+
+Request headers
+
+- Authorization: Bearer <token> (or cookie: token=<token>)
+- Content-Type: application/json
+
+Behavior / Implementation notes
+
+- The `authUser` middleware verifies the token, finds the user, and attaches it
+  as `req.user`.
+- The controller responds with the user object. The password field is excluded
+  from the response because the schema sets `password.select = false`.
+
+Example request
+
+- GET /users/profile
+- Headers: Authorization: Bearer <jwt>
+
+Responses / Status codes
+
+- 200 OK
+
+  - Description: Profile retrieved successfully.
+  - Body: { "user": { ...user object (no password)... } }
+
+- 401 Unauthorized
+
+  - Description: Missing or invalid token, or user not found.
+  - Body: { "message": "Unauthorized: No token provided" } or { "message":
+    "Unauthorized: Invalid token" }
+
+- 500 Internal Server Error
+  - Description: Unexpected server error.
+
+# /users/logout
+
+Description
+
+- Logs out the authenticated user by clearing the token cookie and adding the
+  token to a blacklist (so subsequent requests with the same token are
+  rejected).
+- Protected route — requires a valid JWT.
+- Implemented by `userController.logoutUser` which uses `blacklistTokenModel` to
+  save invalidated tokens.
+
+URL
+
+- GET /users/logout
+
+Request headers
+
+- Authorization: Bearer <token> (or cookie: token=<token>)
+
+Behavior / Implementation notes
+
+- Controller reads token from cookie or Authorization header, clears the `token`
+  cookie, and persists the token to a blacklist collection.
+- Subsequent requests are checked against the blacklist in
+  `auth.middleware.authUser` (ensure middleware checks the blacklist correctly).
+
+Example request
+
+- GET /users/logout
+- Headers: Authorization: Bearer <jwt>
+
+Responses / Status codes
+
+- 200 OK
+
+  - Description: Logged out successfully.
+  - Body: { "message": "Logged out successfully" }
+
+- 401 Unauthorized
+
+  - Description: Missing or invalid token.
+  - Body: { "message": "Unauthorized: No token provided" } or { "message":
+    "Unauthorized: Invalid token" }
+
+- 500 Internal Server Error
+  - Description: Unexpected server error (DB, blacklist save failure, etc.)
+
+Notes & links
+
+- Route definitions: `routes/user.routes.js` —
+  `router.get("/profile", authMiddleware.authUser, ...)` and
+  `router.get("/logout", authMiddleware.authUser, ...)`
+- Controller: `controllers/user.controller.js` — `getUserProfile`, `logoutUser`
+- Middleware: `middlewares/auth.middleware.js` — verifies token and should check
+  blacklist
+- Blacklist model: `models/backlistToken.model.js` (used to store invalidated
+  tokens)
