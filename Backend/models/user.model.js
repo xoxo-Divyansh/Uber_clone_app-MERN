@@ -28,11 +28,10 @@ const userSchema = new mongoose.Schema(
       select: false,
       minlength: [6, "Password must be at least 6 characters long"],
     },
-
-    socketId: {
-      type: String,
-    },
+    
+    socketId: String,
   },
+
   { timestamps: true }
 );
 

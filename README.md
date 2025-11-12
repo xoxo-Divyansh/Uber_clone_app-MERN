@@ -66,3 +66,76 @@ Notes & links
 - Model: [models/user.model.js](models/user.model.js) — includes
   [`userModel.hashPassword`](models/user.model.js) and token generation
 - App entry: [app.js](app.js)
+
+# /users/login
+
+Description
+
+- Authenticates an existing user. On success returns a JWT token and the user
+  object (password is not included in the response).
+- Implemented by `userController.loginUser` (controllers/user.controller.js) and
+  exposed in `routes/user.routes.js`.
+
+URL
+
+- POST /users/login
+
+Request headers
+
+- Content-Type: application/json
+
+Request body (JSON)
+
+- Required shape: { "email": "string (valid email)", "password": "string (min 6
+  chars)" }
+
+Validation rules (as implemented in `routes/user.routes.js`)
+
+- email: must be a valid email (express-validator `.isEmail()`).
+- password: minimum 6 characters.
+
+Behavior / Implementation notes
+
+- The controller finds the user by email and selects the password field
+  explicitly (e.g. `userModel.findOne({ email }).select("+password")`) because
+  the password field is stored with `select: false`.
+- Passwords are compared using bcrypt via `user.comparePassword(password)` (a
+  schema method).
+- On successful authentication a JWT is created with `user.generateAuthToken()`
+  and returned with the user object.
+- Ensure stored users are hashed exactly once when created; existing
+  double-hashed records will fail to authenticate.
+
+Example request
+
+- POST /users/login
+- Body: { "email": "john.doe@example.com", "password": "secret123" }
+
+Responses / Status codes
+
+- 200 OK
+
+  - Description: Authentication successful.
+  - Body: { "token": "<jwt>", "user": { ...user object (no password)... } }
+
+- 400 Bad Request
+
+  - Description: Validation errors (missing/invalid fields).
+  - Body: { "errors": [ ... ] }
+
+- 401 Unauthorized
+
+  - Description: Invalid credentials (email not found or password mismatch).
+  - Common messages returned by the controller:
+    - "Invalid email or password 1" (user not found)
+    - "Invalid email or password 2" (password mismatch)
+
+- 500 Internal Server Error
+  - Description: Unexpected server error (DB, token generation, etc.)
+
+Notes & links
+
+- Route definition: `routes/user.routes.js`
+- Controller: `controllers/user.controller.js` — `loginUser`
+- Model: `models/user.model.js` — `comparePassword`, `generateAuthToken`,
+  `password` field is `select: false`
