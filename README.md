@@ -358,3 +358,146 @@ Notes & links
 - Service: `services/caption.service.js` — `createCaption`
 - Model: `models/caption.model.js` — includes `captionModel.hashPassword` and
   token generation
+
+# /captions/login
+
+Description
+
+- Authenticates a caption (driver). On success returns a JWT token and the
+  caption object (password excluded).
+- Implemented by `captionController.loginCaption` and routed in
+  `routes/caption.routes.js`.
+
+URL
+
+- POST /captions/login
+
+Request headers
+
+- Content-Type: application/json
+
+Request body (JSON)
+
+- Required shape: { "email": "string (valid email)", "password": "string (min 6
+  chars)" }
+
+Validation rules
+
+- email: must be a valid email.
+- password: minimum 6 characters.
+
+Behavior / Implementation notes
+
+- Controller finds the caption by email and selects the password explicitly
+  (e.g. `captionModel.findOne({ email }).select("+password")`) because password
+  is stored with `select: false`.
+- Password comparison uses bcrypt via `caption.comparePassword(password)`
+  (schema method).
+- On success a JWT is created with `caption.generateAuthToken()` and returned.
+- Ensure tokens are sent to client (cookie or Authorization header) and that
+  stored captions have passwords hashed exactly once.
+
+Example request
+
+- POST /captions/login
+- Body: { "email": "jane.doe@example.com", "password": "securepassword" }
+
+Responses / Status codes
+
+- 200 OK
+  - Body: { "token": "<jwt>", "caption": { ...caption object (no password)... }
+    }
+- 400 Bad Request
+  - Validation errors: { "errors": [ ... ] }
+- 401 Unauthorized
+  - Invalid credentials: { "message": "Invalid email or password" }
+- 500 Internal Server Error
+  - Server/db errors.
+
+# /captions/profile
+
+Description
+
+- Returns the authenticated caption's profile.
+- Protected route — requires a valid JWT (Authorization: Bearer <token> or
+  cookie `token`).
+- Implemented by `captionController.getCaptionProfile` and guarded by
+  `auth.middleware.authCaption`.
+
+URL
+
+- GET /captions/profile
+
+Request headers
+
+- Authorization: Bearer <token> (or cookie: token=<token>)
+
+Behavior / Implementation notes
+
+- `authCaption` middleware verifies the token, checks blacklist, finds the
+  caption by decoded id and attaches it as `req.caption`.
+- Controller returns `req.caption`. Password is excluded from response.
+
+Example request
+
+- GET /captions/profile
+- Headers: Authorization: Bearer <jwt>
+
+Responses / Status codes
+
+- 200 OK
+  - Body: { "caption": { ...caption object (no password)... } }
+- 401 Unauthorized
+  - Missing/invalid token or caption not found.
+- 500 Internal Server Error
+  - Server/db errors.
+
+# /captions/logout
+
+Description
+
+- Logs out the authenticated caption by blacklisting the token and clearing the
+  token cookie.
+- Protected route — requires a valid JWT.
+- Implemented by `captionController.logoutCaption` and uses
+  `blacklistTokenModel` to persist invalidated tokens.
+
+URL
+
+- GET /captions/logout
+
+Request headers
+
+- Authorization: Bearer <token> (or cookie: token=<token>)
+
+Behavior / Implementation notes
+
+- Controller reads token (cookie or Bearer header), upserts the token into
+  blacklist collection, clears the `token` cookie and returns success.
+- `authCaption` middleware must check `blacklistTokenModel` so blacklisted
+  tokens are rejected.
+
+Example request
+
+- GET /captions/logout
+- Headers: Authorization: Bearer <jwt>
+
+Responses / Status codes
+
+- 200 OK
+  - Body: { "message": "Logged out successfully" }
+- 401 Unauthorized
+  - Missing/invalid token.
+- 500 Internal Server Error
+  - DB or blacklist save failure.
+
+Notes & links
+
+- Routes: `routes/caption.routes.js`
+- Controller: `controllers/caption.controller.js` — `loginCaption`,
+  `getCaptionProfile`, `logoutCaption`
+- Model: `models/caption.model.js` — `comparePassword`, `generateAuthToken`,
+  password stored with `select: false`
+- Middleware: `middlewares/auth.middleware.js` — `authCaption` must handle
+  Bearer header / cookie and check blacklist
+- Blacklist model: `models/blacklistToken.model.js`
