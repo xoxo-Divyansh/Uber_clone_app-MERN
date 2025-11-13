@@ -1,30 +1,52 @@
-## Backend API Documentation
+# Backend API Documentation
 
-# /users/register
+Status: matches current backend implementation (users + captions).  
+Notes: JWT payload uses {\_id: <mongoId>}, token expiry 24h, password fields
+stored with `select: false`. Token may be sent in Authorization header
+`Bearer <token>` or cookie named `token`. Blacklist is persisted in
+`models/blacklistToken.model.js` and middleware checks it.
+
+Table of contents
+
+- Users
+  - POST /users/register
+  - POST /users/login
+  - GET /users/profile
+  - GET /users/logout
+- Captions
+  - POST /captions/register
+  - POST /captions/login
+  - GET /captions/profile
+  - GET /captions/logout
+- Implementation notes / gotchas
+
+---
+
+## Users
+
+### POST /users/register
 
 Description
 
-- Registers a new user and returns a JWT token plus the created user.
-- Endpoint implemented by
-  [`userController.registerUser`](controllers/user.controller.js) and wired in
-  [`routes/user.routes.js`](routes/user.routes.js). The controller uses
-  [`userService.createUser`](services/user.service.js) which ultimately persists
-  data via [`userModel`](models/user.model.js). See also app mount in
-  [`app.js`](app.js).
+- Create a new user and return a JWT + created user object (password omitted).
 
 URL
 
 - POST /users/register
 
-Request headers
+Headers
 
 - Content-Type: application/json
 
-Request body (JSON)
+Request body (required shape)
 
-- Required shape: { "fullname": { "firstname": "string (min 3 chars)",
-  "lastname": "string (optional, min 3 chars)" }, "email": "string (valid
-  email)", "password": "string (min 6 chars)" }
+```json
+{
+  "fullname": { "firstname": "string", "lastname": "string (optional)" },
+  "email": "string (valid email)",
+  "password": "string (min 6 chars)"
+}
+```
 
 Validation rules (as implemented in
 [`routes/user.routes.js`](routes/user.routes.js))
@@ -69,12 +91,12 @@ Notes & links
   [`userModel.hashPassword`](models/user.model.js) and token generation
 - App entry: [app.js](app.js)
 
-# /users/login
+### POST /users/login
 
 Description
 
-- Authenticates an existing user. On success returns a JWT token and the user
-  object (password is not included in the response).
+- Authenticate an existing user. On success return a JWT + user object (password
+  omitted).
 - Implemented by `userController.loginUser` (controllers/user.controller.js) and
   exposed in `routes/user.routes.js`.
 
@@ -82,14 +104,18 @@ URL
 
 - POST /users/login
 
-Request headers
+Headers
 
 - Content-Type: application/json
 
-Request body (JSON)
+Request body (required shape)
 
-- Required shape: { "email": "string (valid email)", "password": "string (min 6
-  chars)" }
+```json
+{
+  "email": "string (valid email)",
+  "password": "string (min 6 chars)"
+}
+```
 
 Validation rules (as implemented in `routes/user.routes.js`)
 
@@ -142,11 +168,11 @@ Notes & links
 - Model: `models/user.model.js` — `comparePassword`, `generateAuthToken`,
   `password` field is `select: false`
 
-# /users/profile
+### GET /users/profile
 
 Description
 
-- Returns the authenticated user's profile.
+- Return the authenticated user's profile.
 - Protected route — requires a valid JWT (sent in Authorization header as
   "Bearer <token>" or in a cookie named `token`).
 - Implemented by `userController.getUserProfile` and guarded by
@@ -156,7 +182,7 @@ URL
 
 - GET /users/profile
 
-Request headers
+Headers
 
 - Authorization: Bearer <token> (or cookie: token=<token>)
 - Content-Type: application/json
@@ -189,7 +215,7 @@ Responses / Status codes
 - 500 Internal Server Error
   - Description: Unexpected server error.
 
-# /users/logout
+### GET /users/logout
 
 Description
 
@@ -204,7 +230,7 @@ URL
 
 - GET /users/logout
 
-Request headers
+Headers
 
 - Authorization: Bearer <token> (or cookie: token=<token>)
 
@@ -247,43 +273,38 @@ Notes & links
 - Blacklist model: `models/backlistToken.model.js` (used to store invalidated
   tokens)
 
-# /captions/register
+## Captions
+
+### POST /captions/register
 
 Description
 
-- Registers a new caption (driver) and returns a JWT token plus the created
-  caption object.
-- Endpoint implemented by `captionController.registerCaption` and wired in
-  `routes/caption.routes.js`. The controller uses `captionService.createCaption`
-  which ultimately persists data via `captionModel`.
+- Create a new caption (driver) and return a JWT + created caption object
+  (password omitted).
 
 URL
 
 - POST /captions/register
 
-Request headers
+Headers
 
 - Content-Type: application/json
 
-Request body (JSON)
+Request body (required shape)
 
-- Required shape:
-  ```json
-  {
-    "fullname": {
-      "firstname": "string (min 3 chars)",
-      "lastname": "string (optional, min 3 chars)"
-    },
-    "email": "string (valid email)",
-    "password": "string (min 6 chars)",
-    "vehical": {
-      "plate": "string (min 3 chars)",
-      "color": "string (required)",
-      "capacity": "number (min 1)",
-      "vehicalType": "string (one of ['car', 'bike', 'van', 'tuktuk', 'suv'])"
-    }
+```json
+{
+  "fullname": { "firstname": "string", "lastname": "string (optional)" },
+  "email": "string (valid email)",
+  "password": "string (min 6 chars)",
+  "vehical": {
+    "plate": "string (min 3 chars)",
+    "color": "string (required)",
+    "capacity": "number (min 1)",
+    "vehicalType": "string (one of ['car', 'bike', 'van', 'tuktuk', 'suv'])"
   }
-  ```
+}
+```
 
 Validation rules (as implemented in `routes/caption.routes.js`)
 
@@ -359,27 +380,29 @@ Notes & links
 - Model: `models/caption.model.js` — includes `captionModel.hashPassword` and
   token generation
 
-# /captions/login
+### POST /captions/login
 
 Description
 
-- Authenticates a caption (driver). On success returns a JWT token and the
-  caption object (password excluded).
-- Implemented by `captionController.loginCaption` and routed in
-  `routes/caption.routes.js`.
+- Authenticate a caption (driver). On success return a JWT + caption object
+  (password omitted).
 
 URL
 
 - POST /captions/login
 
-Request headers
+Headers
 
 - Content-Type: application/json
 
-Request body (JSON)
+Request body (required shape)
 
-- Required shape: { "email": "string (valid email)", "password": "string (min 6
-  chars)" }
+```json
+{
+  "email": "string (valid email)",
+  "password": "string (min 6 chars)"
+}
+```
 
 Validation rules
 
@@ -414,11 +437,11 @@ Responses / Status codes
 - 500 Internal Server Error
   - Server/db errors.
 
-# /captions/profile
+### GET /captions/profile
 
 Description
 
-- Returns the authenticated caption's profile.
+- Return the authenticated caption's profile.
 - Protected route — requires a valid JWT (Authorization: Bearer <token> or
   cookie `token`).
 - Implemented by `captionController.getCaptionProfile` and guarded by
@@ -428,7 +451,7 @@ URL
 
 - GET /captions/profile
 
-Request headers
+Headers
 
 - Authorization: Bearer <token> (or cookie: token=<token>)
 
@@ -452,7 +475,7 @@ Responses / Status codes
 - 500 Internal Server Error
   - Server/db errors.
 
-# /captions/logout
+### GET /captions/logout
 
 Description
 
@@ -466,7 +489,7 @@ URL
 
 - GET /captions/logout
 
-Request headers
+Headers
 
 - Authorization: Bearer <token> (or cookie: token=<token>)
 
@@ -501,3 +524,15 @@ Notes & links
 - Middleware: `middlewares/auth.middleware.js` — `authCaption` must handle
   Bearer header / cookie and check blacklist
 - Blacklist model: `models/blacklistToken.model.js`
+
+## Implementation notes / gotchas
+
+- JWT payloads for users and captions include the MongoDB `_id` field as `id`.
+- Password fields are stored with `select: false` in Mongoose, meaning they
+  won't be returned in queries unless explicitly included (e.g.
+  `.select("+password")`).
+- Token expiry is set to 24 hours; after expiry, refresh tokens should be used
+  (if implemented) or the user/caption must log in again.
+- Blacklist functionality is optional; if implemented, it should persist
+  blacklisted tokens in a collection (e.g. `blacklistTokenModel`) and middleware
+  should check this blacklist on protected routes.
