@@ -1,22 +1,45 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import axios from "axios";
+import { useContext, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { UserDataContext } from "../context/UserDataContext";
 
-function UserLogin() {
+const UserLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [userData, setUserData] = useState({})
 
+  const { setUser } = useContext(UserDataContext);
+  const navigate = useNavigate();
 
-
-  const submitHandler = (e) => {
+  const submitHandler = async (e) => {
     e.preventDefault();
-    setUserData({
-      email:email,
-      password
-    })
-    console.log(userData);
-    setEmail("");
-    setPassword("");
+
+    const userData = { email, password };
+
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_BASE_URL}/users/login`,
+        userData
+      );
+      // console.log(response);
+
+      if (response.status === 200) {
+        const data = response.data;
+        setUser(data.user);
+        localStorage.setItem("token", data.token);
+        navigate("/home");
+      }
+      setEmail("");
+      setPassword("");
+    } catch (error) {
+      if (error.response) {
+        console.log("Error:", error.response.data);
+        console.log("Status:", error.response.status);
+      } else if (error.request) {
+        console.log("No response received:", error.request);
+      } else {
+        console.log("Error setting up request:", error.message);
+      }
+    }
   };
 
   return (
@@ -62,7 +85,7 @@ function UserLogin() {
           <p className="text-lg text-center">
             New here?{" "}
             <Link
-              to={"/user-signup"}
+              to={"/signup"}
               className="text-md font-semibold text-blue-600"
             >
               Create new Account
@@ -71,12 +94,15 @@ function UserLogin() {
         </form>
       </div>
       <div className="">
-        <Link to={"/captian-login"} className="rounded-3xl bg-[#10c267] text-white text-lg font-bold py-3 px-5 flex items-center justify-center">
+        <Link
+          to={"/captain-login"}
+          className="rounded-3xl bg-[#10c267] text-white text-lg font-bold py-3 px-5 flex items-center justify-center"
+        >
           Sign in as Captain
         </Link>
       </div>
     </div>
   );
-}
+};
 
 export default UserLogin;
